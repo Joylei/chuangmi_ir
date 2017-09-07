@@ -32,6 +32,7 @@ DEFAULT_RETRY = 3
 SERVICE_LEARN = "learn_command"
 SERVICE_SEND = "send_packet"
 ATTR_PACKET = 'packet'
+ATTR_MODEL = 'model'
 CONF_RETRIES = 'retries'
 
 SWITCH_SCHEMA = vol.Schema({
@@ -71,6 +72,7 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
 
     try:
         ir_remote = Device(host, token)
+        device_info = ir_remote.info()
     except DeviceException:
         _LOGGER.info("Connection failed.")
         raise PlatformNotReady
@@ -126,7 +128,8 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
                 ir_remote,
                 device_config.get(CONF_NAME, object_id),
                 device_config.get(CONF_COMMAND_ON),
-                device_config.get(CONF_COMMAND_OFF)
+                device_config.get(CONF_COMMAND_OFF),
+                device_info
             )
         )
 
@@ -136,13 +139,17 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
 class ChuangMiInfraredSwitch(SwitchDevice):
     """Representation of an Chuang Mi IR switch."""
 
-    def __init__(self, device, name, command_on, command_off):
+    def __init__(self, device, name, command_on, command_off, device_info):
         """Initialize the switch."""
         self._name = name
         self._state = False
         self._command_on = command_on or None
         self._command_off = command_off or None
+        self._device_info = device_info
         self._device = device
+        self._state_attrs = {
+            ATTR_MODEL: self._device_info.raw['model'],
+        }
 
     @property
     def name(self):
@@ -158,6 +165,11 @@ class ChuangMiInfraredSwitch(SwitchDevice):
     def should_poll(self):
         """No polling needed."""
         return False
+
+    @property
+    def device_state_attributes(self):
+        """Return the state attributes of the device."""
+        return self._state_attrs
 
     @property
     def is_on(self):
