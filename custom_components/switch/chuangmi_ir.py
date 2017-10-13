@@ -20,7 +20,7 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.util.dt import utcnow
 from homeassistant.exceptions import PlatformNotReady
 
-REQUIREMENTS = ['python-mirobo']
+REQUIREMENTS = ['python-miio>=0.3.0']
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,8 +30,8 @@ DOMAIN = "chuangmi"
 DEFAULT_TIMEOUT = 10
 DEFAULT_RETRY = 3
 SERVICE_LEARN = "learn_command"
-SERVICE_SEND = "send_packet"
-ATTR_PACKET = 'packet'
+SERVICE_SEND = "send_command"
+ATTR_COMMAND = 'command'
 ATTR_MODEL = 'model'
 CONF_RETRIES = 'retries'
 
@@ -54,14 +54,14 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
 })
 
 CHUANGMIIR_SERVICE_SCHEMA = vol.Schema({
-    vol.Required(ATTR_PACKET): vol.All(cv.string, vol.Length(min=1)),
+    vol.Required(ATTR_COMMAND): vol.All(cv.string, vol.Length(min=1)),
 })
 
 
 # pylint: disable=unused-argument
 def setup_platform(hass, config, add_devices, discovery_info=None):
     """Set up the smart mi fan platform."""
-    from mirobo import Device, DeviceException
+    from miio import ChuangmiIr, DeviceException
     host = config.get(CONF_HOST)
     token = config.get(CONF_TOKEN)
     devices = config.get(CONF_SWITCHES, {})
@@ -71,7 +71,7 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
     _LOGGER.info("Initializing with host %s (token %s...)", host, token[:5])
 
     try:
-        ir_remote = Device(host, token)
+        ir_remote = ChuangmiIr(host, token)
         device_info = ir_remote.info()
     except DeviceException:
         _LOGGER.info("Connection failed.")
@@ -81,13 +81,13 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
     def _learn_command(call):
 
         key = randint(1, 1000000)
-        ir_remote.send("miIO.ir_learn", {'key': str(key)})
+        ir_remote.learn(key)
 
         _LOGGER.info(
-            "Press the key of your remote control you want to capture")
+            "Press the key to capture of your remote control")
         start_time = utcnow()
         while (utcnow() - start_time) < timedelta(seconds=DEFAULT_TIMEOUT):
-            res = ir_remote.send("miIO.ir_read", {'key': str(key)})
+            res = ir_remote.read(key)
             if res["code"]:
                 log_msg = 'Captured infrared command: %s' % res["code"]
                 _LOGGER.info(log_msg)
@@ -102,24 +102,23 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
             hass, log_msg, title='Chuang Mi IR Remote Controller')
 
     @asyncio.coroutine
-    def _send_packet(call):
-        packet = str(call.data.get(ATTR_PACKET))
-        if packet:
+    def _send_command(call):
+        command = str(call.data.get(ATTR_COMMAND))
+        if command:
             for retry in range(retries):
                 try:
-                    ir_remote.send(
-                        "miIO.ir_play", {'freq': 38400, 'code': packet})
+                    ir_remote.play(command, 38400)
                     break
                 except (timeout, ValueError):
-                    _LOGGER.error("Send packet failed.")
+                    _LOGGER.error("Transmit infrared command failed.")
         else:
-            _LOGGER.debug("Empty packet skipped.")
+            _LOGGER.debug("Empty infrared command skipped.")
 
     hass.services.register(
         DOMAIN, SERVICE_LEARN + '_' + host.replace('.', '_'), _learn_command)
 
     hass.services.register(
-        DOMAIN, SERVICE_SEND + '_' + host.replace('.', '_'), _send_packet)
+        DOMAIN, SERVICE_SEND + '_' + host.replace('.', '_'), _send_command)
 
     switches = []
     for object_id, device_config in devices.items():
@@ -148,7 +147,7 @@ class ChuangMiInfraredSwitch(SwitchDevice):
         self._device_info = device_info
         self._device = device
         self._state_attrs = {
-            ATTR_MODEL: self._device_info.raw['model'],
+            ATTR_MODEL: self._device_info.model,
         }
 
     @property
@@ -178,26 +177,25 @@ class ChuangMiInfraredSwitch(SwitchDevice):
 
     def turn_on(self, **kwargs):
         """Turn the device on."""
-        if self._send_packet(self._command_on):
+        if self._send_command(self._command_on):
             self._state = True
             self.schedule_update_ha_state()
 
     def turn_off(self, **kwargs):
         """Turn the device off."""
-        if self._send_packet(self._command_off):
+        if self._send_command(self._command_off):
             self._state = False
             self.schedule_update_ha_state()
 
-    def _send_packet(self, packet):
-        """Send packet to device."""
+    def _send_command(self, command):
+        """Send infrared command to device."""
 
-        packet = str(packet)
-        if not packet:
-            _LOGGER.debug("Empty packet skipped.")
+        command = str(command)
+        if not command:
+            _LOGGER.debug("Empty infrared command skipped.")
             return True
         try:
-            self._device.send(
-                "miIO.ir_play", {'freq': 38400, 'code': packet})
+            self._device.play(command, 38400)
         except (timeout, ValueError) as error:
             _LOGGER.error(error)
             return False
