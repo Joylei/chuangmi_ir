@@ -20,7 +20,7 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.util.dt import utcnow
 from homeassistant.exceptions import PlatformNotReady
 
-REQUIREMENTS = ['python-miio>=0.3.0']
+REQUIREMENTS = ['https://github.com/rytilahti/python-miio/archive/master.zip#python-miio==0.3.0']
 
 _LOGGER = logging.getLogger(__name__)
 
