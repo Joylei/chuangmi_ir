@@ -26,7 +26,7 @@ _LOGGER = logging.getLogger(__name__)
 
 DEVICE_DEFAULT_NAME = 'chuang_mi_ir'
 SWITCH_DEFAULT_NAME = 'chuang_mi_ir_switch'
-DOMAIN = "chuangmi"
+DOMAIN = "switch"
 DEFAULT_TIMEOUT = 10
 DEFAULT_RETRY = 3
 SERVICE_LEARN = "learn_command"
