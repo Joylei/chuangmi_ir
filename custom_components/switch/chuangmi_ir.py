@@ -20,7 +20,7 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.util.dt import utcnow
 from homeassistant.exceptions import PlatformNotReady
 
-REQUIREMENTS = ['python-miio>=0.3.5']
+REQUIREMENTS = ['python-miio>=0.3.6']
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -107,7 +107,7 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
         if command:
             for retry in range(retries):
                 try:
-                    ir_remote.play(command, 38400)
+                    ir_remote.play_raw(command, 38400)
                     break
                 except (timeout, ValueError):
                     _LOGGER.error("Transmit infrared command failed.")
@@ -195,7 +195,7 @@ class ChuangMiInfraredSwitch(SwitchDevice):
             _LOGGER.debug("Empty infrared command skipped.")
             return True
         try:
-            self._device.play(command, 38400)
+            self._device.play_raw(command, 38400)
         except (timeout, ValueError) as error:
             _LOGGER.error(error)
             return False
