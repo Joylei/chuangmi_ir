@@ -14,7 +14,7 @@ from homeassistant.components.fan import (SPEED_OFF, FanEntity,
                                           ATTR_OSCILLATING, ATTR_DIRECTION, )
 from homeassistant.const import CONF_NAME, CONF_HOST, CONF_TOKEN
 
-REQUIREMENTS = ['python-mirobo']
+REQUIREMENTS = ['python-miio>=0.3.0']
 
 _LOGGER = logging.getLogger(__name__)
 
