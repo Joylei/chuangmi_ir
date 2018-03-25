@@ -74,7 +74,7 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
         # The Chuang Mi IR Remote Controller wants to be re-discovered every
         # 5 minutes. As long as polling is disabled the device should be
         # re-discovered (lazy_discover=False) in front of every command.
-        ir_remote = Device(host, token, lazy_discover=False)
+        ir_remote = ChuangmiIr(host, token, lazy_discover=False)
         device_info = ir_remote.info()
     except DeviceException:
         _LOGGER.info("Connection failed.")
